@@ -4,6 +4,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.utils.env_loader import load_env_file
+
+# Load environment variables from .env on module import
+load_env_file()
+
 from app.routes.chat_routes import router as chat_router
 from app.routes.image_routes import router as image_router
 from app.services.image_analyzer import get_analyzer_service

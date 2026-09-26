@@ -237,8 +237,8 @@ export default function App() {
                 fileInfo={{
                   name: selectedFile.name,
                   size: selectedFile.size,
-                  width: imageDimensions.width,
-                  height: imageDimensions.height,
+                  width: analysisResults?.image_width || imageDimensions.width,
+                  height: analysisResults?.image_height || imageDimensions.height,
                 }}
                 onAnalyze={handleAnalyze}
                 onReset={handleReset}

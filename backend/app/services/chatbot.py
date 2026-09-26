@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from app.services.conversation_manager import ConversationSession
+from app.utils.env_loader import load_env_file
 
 
 class ChatbotService:
@@ -18,6 +19,7 @@ class ChatbotService:
     """
 
     def __init__(self):
+        load_env_file()
         self.gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
 
@@ -30,6 +32,13 @@ class ChatbotService:
         clean_question = question.strip()
         if not clean_question:
             return "Please ask a question about the image.", "validation"
+
+        # Dynamically refresh keys from environment if empty
+        if not self.gemini_api_key:
+            load_env_file()
+            self.gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
+        if not self.openai_api_key:
+            self.openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
 
         # 1. Try Google Gemini Multimodal VLM API if key is available
         if self.gemini_api_key:
@@ -103,12 +112,19 @@ class ChatbotService:
 
         b64_image = base64.b64encode(session.image_bytes).decode("utf-8")
 
+        # Detect image MIME type dynamically based on bytes and filename
+        mime_type = "image/jpeg"
+        if session.image_bytes.startswith(b"\x89PNG") or (session.image_filename and session.image_filename.lower().endswith(".png")):
+            mime_type = "image/png"
+        elif session.image_bytes.startswith(b"RIFF"):
+            mime_type = "image/webp"
+
         contents.append({
             "role": "user",
             "parts": [
                 {
                     "inline_data": {
-                        "mime_type": "image/jpeg",
+                        "mime_type": mime_type,
                         "data": b64_image,
                     }
                 },

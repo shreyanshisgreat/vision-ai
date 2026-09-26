@@ -27,8 +27,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Conversational Image Recognition Chatbot API",
-    description="Phase 2: Conversational Image Understanding & Question Answering",
-    version="2.0.0",
+    description="Phase 3: Conversational Image Understanding combining YOLOv8s and Vision-Language Model (VLM)",
+    version="3.0.0",
     lifespan=lifespan,
 )
 
@@ -62,7 +62,9 @@ app.include_router(chat_router)
 async def root():
     return {
         "project": "Conversational Image Recognition Chatbot",
-        "phase": 2,
+        "phase": 3,
+        "detector": "Ultralytics YOLOv8s",
+        "vlm_engine": "active",
         "status": "online",
         "docs_url": "/docs",
         "analyze_endpoint": "/api/analyze-image",

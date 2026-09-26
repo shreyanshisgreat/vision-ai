@@ -209,15 +209,15 @@ export default function App() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    Phase 2: Conversational Image Chatbot
+                    Phase 3: Conversational Image Understanding
                   </h2>
                   <p className="text-xs text-indigo-300 font-medium">
-                    Upload an image, analyze it, and ask natural language questions!
+                    YOLOv8s Structured Detection + Vision-Language Model (VLM)
                   </p>
                 </div>
               </div>
               <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                You can upload any photo or select one of the built-in sample scenes below. After analysis, you can chat conversationally about the objects, quantities, positions, and details in the image.
+                Upload any photo or select one of the built-in sample scenes. The system uses YOLOv8s for structured COCO object detection and a Vision-Language Model for open-vocabulary visual reasoning and conversational Q&A.
               </p>
             </div>
 

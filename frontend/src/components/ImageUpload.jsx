@@ -104,6 +104,13 @@ export default function ImageUpload({ onImageSelect, onError, onSelectSample }) 
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
+            onClick={() => onSelectSample('/samples/study_desk_open_vocab.jpg', 'study_desk_open_vocab.jpg')}
+            className="text-xs px-2.5 py-1 rounded-lg bg-purple-900/40 hover:bg-purple-800/60 text-purple-200 border border-purple-700/60 transition hover:text-white font-medium"
+          >
+            🎯 Open-Vocab Desk (Calculator, Sharpener, Pencil, Notebook, Laptop, Chair, Person)
+          </button>
+          <button
+            type="button"
             onClick={() => onSelectSample('/samples/study_group_desk.jpg', 'study_group_desk.jpg')}
             className="text-xs px-2.5 py-1 rounded-lg bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-200 border border-emerald-700/60 transition hover:text-white"
           >

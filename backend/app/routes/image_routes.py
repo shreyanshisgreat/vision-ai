@@ -17,7 +17,10 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Conversational Image Recognition Chatbot API",
-        "phase": 1,
+        "phase": 3,
+        "detector": "Ultralytics YOLOv8s",
+        "classes_count": 80,
+        "vlm_engine": "active",
         "model_loaded": analyzer._model is not None,
     }
 

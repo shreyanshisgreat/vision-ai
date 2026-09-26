@@ -3,6 +3,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 
 from app.models.schemas import ErrorResponse, ImageAnalysisResponse
+from app.services.conversation_manager import get_conversation_manager
 from app.services.image_analyzer import get_analyzer_service
 from app.utils.image_validator import ImageValidationError, validate_image_bytes, validate_image_file
 
@@ -112,7 +113,18 @@ async def analyze_image(
             },
         )
 
-    # 5. Formulate structured response
+    # 5. Create conversation session for image question-answering
+    conversation_manager = get_conversation_manager()
+    conversation_id = conversation_manager.create_session(
+        image_bytes=image_bytes,
+        filename=upload.filename or "uploaded_image.jpg",
+        width=width,
+        height=height,
+        detections=detections,
+        unique_labels=unique_labels,
+    )
+
+    # 6. Formulate structured response
     message = (
         f"Detected {len(detections)} object{'s' if len(detections) != 1 else ''} "
         f"({', '.join(unique_labels)})"
@@ -122,6 +134,7 @@ async def analyze_image(
 
     return ImageAnalysisResponse(
         success=True,
+        conversation_id=conversation_id,
         filename=upload.filename,
         message=message,
         detections=detections,

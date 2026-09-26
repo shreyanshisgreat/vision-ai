@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.routes.chat_routes import router as chat_router
 from app.routes.image_routes import router as image_router
 from app.services.image_analyzer import get_analyzer_service
 
@@ -26,8 +27,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Conversational Image Recognition Chatbot API",
-    description="Phase 1: Object Detection and Image Understanding Service",
-    version="1.0.0",
+    description="Phase 2: Conversational Image Understanding & Question Answering",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -54,14 +55,16 @@ app.add_middleware(
 
 # Register routes
 app.include_router(image_router)
+app.include_router(chat_router)
 
 
 @app.get("/", summary="Root health & info")
 async def root():
     return {
         "project": "Conversational Image Recognition Chatbot",
-        "phase": 1,
+        "phase": 2,
         "status": "online",
         "docs_url": "/docs",
         "analyze_endpoint": "/api/analyze-image",
+        "chat_endpoint": "/api/chat",
     }

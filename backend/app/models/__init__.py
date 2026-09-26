@@ -1,4 +1,22 @@
 """Data models and schemas."""
-from .schemas import DetectionItem, ImageAnalysisResponse, ErrorResponse
+from .schemas import (
+    BoundingBox,
+    ChatMessage,
+    ChatRequest,
+    ChatResponse,
+    ClearChatResponse,
+    DetectionItem,
+    ErrorResponse,
+    ImageAnalysisResponse,
+)
 
-__all__ = ["DetectionItem", "ImageAnalysisResponse", "ErrorResponse"]
+__all__ = [
+    "BoundingBox",
+    "ChatMessage",
+    "ChatRequest",
+    "ChatResponse",
+    "ClearChatResponse",
+    "DetectionItem",
+    "ErrorResponse",
+    "ImageAnalysisResponse",
+]

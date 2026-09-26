@@ -104,6 +104,13 @@ export default function ImageUpload({ onImageSelect, onError, onSelectSample }) 
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
+            onClick={() => onSelectSample('/samples/man_laptop_chair.png', 'man_laptop_chair.png')}
+            className="text-xs px-2.5 py-1 rounded-lg bg-indigo-900/40 hover:bg-indigo-800/60 text-indigo-200 border border-indigo-700/60 transition hover:text-white"
+          >
+            💻 Man, Laptop & Chair
+          </button>
+          <button
+            type="button"
             onClick={() => onSelectSample('/samples/bus.jpg', 'bus.jpg')}
             className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition hover:text-white"
           >

@@ -12,6 +12,7 @@ class BoundingBox(BaseModel):
 
 class DetectionItem(BaseModel):
     """Individual object detection item."""
+    class_id: Optional[int] = Field(default=None, description="Raw model class ID from COCO taxonomy")
     label: str = Field(..., description="Detected object class label (e.g. person, laptop)")
     confidence: float = Field(..., description="Detection confidence score between 0.0 and 1.0")
     box: Optional[BoundingBox] = Field(default=None, description="Optional bounding box coordinates")

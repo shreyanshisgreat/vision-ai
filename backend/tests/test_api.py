@@ -59,6 +59,48 @@ def test_analyze_image_with_objects():
     return data["conversation_id"]
 
 
+def test_analyze_transparent_man_laptop_chair_image():
+    chair_path = SAMPLE_DIR / "man_laptop_chair.png"
+    assert chair_path.exists(), f"Sample image {chair_path} not found"
+
+    with open(chair_path, "rb") as f:
+        response = client.post(
+            "/api/analyze-image",
+            files={"file": ("man_laptop_chair.png", f, "image/png")},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+
+    labels = [d["label"] for d in data["detections"]]
+    class_ids = [d.get("class_id") for d in data["detections"]]
+
+    print(f"✓ Detections for man_laptop_chair: {labels} (class_ids: {class_ids})")
+
+    # 1. Verify umbrella is NOT detected (was a black background artifact)
+    assert "umbrella" not in labels, f"Error: umbrella falsely detected: {labels}"
+
+    # 2. Verify laptop IS detected
+    assert "laptop" in labels, f"Error: laptop missing from detections: {labels}"
+
+    # 3. Verify person and chair are detected
+    assert "person" in labels, f"Error: person missing from detections: {labels}"
+    assert "chair" in labels, f"Error: chair missing from detections: {labels}"
+
+    # 4. Verify class IDs correspond correctly to COCO taxonomy
+    for det in data["detections"]:
+        if det["label"] == "person":
+            assert det["class_id"] == 0
+        elif det["label"] == "chair":
+            assert det["class_id"] == 56
+        elif det["label"] == "laptop":
+            assert det["class_id"] == 63
+
+    print("✓ Successfully verified correct detection of Person, Laptop, and Chair with zero Umbrella!")
+    return data["conversation_id"]
+
+
 def test_analyze_image_no_objects():
     empty_path = SAMPLE_DIR / "empty_scene.jpg"
     assert empty_path.exists(), f"Sample image {empty_path} not found"
@@ -242,6 +284,7 @@ if __name__ == "__main__":
     test_health_check()
     test_root_endpoint()
     test_analyze_image_with_objects()
+    test_analyze_transparent_man_laptop_chair_image()
     test_analyze_image_no_objects()
     test_analyze_invalid_extension()
     test_analyze_corrupt_image()

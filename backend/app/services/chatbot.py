@@ -275,9 +275,10 @@ class ChatbotService:
         # 6. Presence / Existence Questions
         #    e.g. "Is there a dog?", "Do you see a car?", "Can you see a person?"
         # ---------------------------------------------------------------------
-        presence_match = re.search(r"(is there|do you see|can you see|are there any)\s+(?:a|an|the)?\s*([a-z\s]+)", q_lower)
+        presence_match = re.search(r"(?:is there|do you see|can you see|are there any)\s+(?:an\s+|a\s+|the\s+)?([a-z\s]+)", q_lower)
         if presence_match:
-            candidate = presence_match.group(2).strip().rstrip("?.,")
+            candidate = presence_match.group(1).strip().rstrip("?.,")
+            candidate = re.sub(r"\b(in (?:the|this) (?:image|picture|photo|scene)|here)\b", "", candidate).strip()
             matched_label = self._find_matching_label(candidate, unique_labels)
 
             if matched_label:
@@ -287,7 +288,7 @@ class ChatbotService:
                 percentage = int(highest_conf * 100)
                 return f"Yes, there is a {matched_label} detected in the image with {percentage}% confidence."
             else:
-                cleaned_name = candidate.rstrip("s")
+                cleaned_name = candidate.split(" ")[0].rstrip("s")
                 return f"No, I do not see any {cleaned_name} in this image."
 
         # ---------------------------------------------------------------------

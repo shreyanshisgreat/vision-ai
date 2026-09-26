@@ -101,6 +101,32 @@ def test_analyze_transparent_man_laptop_chair_image():
     return data["conversation_id"]
 
 
+def test_analyze_multi_coco_objects_image():
+    img_path = SAMPLE_DIR / "study_group_desk.jpg"
+    assert img_path.exists(), f"Sample image {img_path} not found"
+
+    with open(img_path, "rb") as f:
+        response = client.post(
+            "/api/analyze-image",
+            files={"file": ("study_group_desk.jpg", f, "image/jpeg")},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+
+    labels = set([d["label"] for d in data["detections"]])
+    print(f"✓ Detections for study_group_desk: {sorted(list(labels))}")
+
+    # Verify all 5 requested COCO classes are detected
+    expected_classes = ["person", "laptop", "bottle", "chair", "cell phone"]
+    for expected in expected_classes:
+        assert expected in labels, f"Expected COCO class '{expected}' was not detected in {labels}"
+
+    print(f"✓ Successfully verified all 5 requested COCO objects: {expected_classes}")
+    return data["conversation_id"]
+
+
 def test_analyze_image_no_objects():
     empty_path = SAMPLE_DIR / "empty_scene.jpg"
     assert empty_path.exists(), f"Sample image {empty_path} not found"
@@ -285,6 +311,7 @@ if __name__ == "__main__":
     test_root_endpoint()
     test_analyze_image_with_objects()
     test_analyze_transparent_man_laptop_chair_image()
+    test_analyze_multi_coco_objects_image()
     test_analyze_image_no_objects()
     test_analyze_invalid_extension()
     test_analyze_corrupt_image()

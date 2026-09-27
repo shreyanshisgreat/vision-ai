@@ -11,6 +11,7 @@ load_env_file()
 
 from app.routes.chat_routes import router as chat_router
 from app.routes.image_routes import router as image_router
+from app.routes.vision_routes import router as vision_router
 from app.services.image_analyzer import get_analyzer_service
 
 
@@ -61,6 +62,7 @@ app.add_middleware(
 # Register routes
 app.include_router(image_router)
 app.include_router(chat_router)
+app.include_router(vision_router)
 
 
 @app.get("/", summary="Root health & info")

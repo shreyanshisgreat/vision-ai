@@ -93,6 +93,38 @@ export async function clearChatHistory(conversationId) {
 }
 
 /**
+ * Request an automatic visual summary ("Explain what you see") from Gemini Vision for an active session.
+ * @param {string} conversationId - The active session identifier
+ * @returns {Promise<Object>} Object containing { success, summary, source, conversation_id }
+ */
+export async function getImageSummary(conversationId) {
+  try {
+    const response = await fetch(`${API_BASE}/vision/summary`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        conversation_id: conversationId,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || `Failed to get image summary (${response.status})`);
+    }
+
+    return data;
+  } catch (error) {
+    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+      throw new Error('Lost connection to backend server.');
+    }
+    throw error;
+  }
+}
+
+/**
  * Check backend health status.
  * @returns {Promise<Object>}
  */

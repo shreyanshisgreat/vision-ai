@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, AlertCircle } from 'lucide-react';
+import { AlertCircle, Sparkles, Play, Loader2 } from 'lucide-react';
 import Header from './components/Header';
 import ImageUpload from './components/ImageUpload';
 import ImagePreview from './components/ImagePreview';
 import DetectionResults from './components/DetectionResults';
+import VisualUnderstandingCard from './components/VisualUnderstandingCard';
 import ChatSection from './components/ChatSection';
-import { analyzeImage, sendChatMessage, clearChatHistory, checkBackendHealth } from './services/api';
+import { analyzeImage, sendChatMessage, clearChatHistory, checkBackendHealth, getImageSummary } from './services/api';
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -18,6 +19,10 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [errorMessage, setErrorMessage] = useState(null);
   const [backendStatus, setBackendStatus] = useState('checking');
+  const [imageSummary, setImageSummary] = useState(null);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState(false);
+  const [summarySource, setSummarySource] = useState(null);
 
   // Verify backend health on mount and periodically
   useEffect(() => {
@@ -36,7 +41,6 @@ export default function App() {
 
   // Handle new image selection (clears old context & starts fresh conversation)
   const handleImageSelect = (file) => {
-    // Revoke previous object URL if any
     if (imagePreviewUrl) {
       URL.revokeObjectURL(imagePreviewUrl);
     }
@@ -45,6 +49,10 @@ export default function App() {
     setAnalysisResults(null);
     setConversationId(null);
     setChatMessages([]);
+    setImageSummary(null);
+    setIsSummaryLoading(false);
+    setSummaryError(false);
+    setSummarySource(null);
     setSelectedFile(file);
 
     const url = URL.createObjectURL(file);
@@ -82,23 +90,34 @@ export default function App() {
       const data = await analyzeImage(selectedFile);
       setAnalysisResults(data);
       setConversationId(data.conversation_id);
+      // Fresh clean chat stream ready for user's questions
+      setChatMessages([]);
 
-      // Add initial greeting from assistant in conversation stream
-      const objectSummary =
-        data.total_detected > 0
-          ? `I've analyzed your image and identified ${data.total_detected} object${
-              data.total_detected !== 1 ? 's' : ''
-            } (${data.unique_labels.join(', ')}). You can now ask me any questions about this image!`
-          : "I've analyzed your image, but didn't detect any prominent everyday objects. Feel free to ask me questions about it!";
+      // Asynchronously trigger Gemini Vision summary ("Explain what you see")
+      // Does not block the chat UI and does not create fake chat messages
+      setIsSummaryLoading(true);
+      setSummaryError(false);
+      setImageSummary(null);
+      setSummarySource(null);
 
-      setChatMessages([
-        {
-          role: 'assistant',
-          content: objectSummary,
-        },
-      ]);
+      getImageSummary(data.conversation_id)
+        .then((summaryData) => {
+          if (summaryData && summaryData.success && summaryData.summary) {
+            setImageSummary(summaryData.summary);
+            setSummarySource(summaryData.source);
+          } else {
+            setSummaryError(true);
+          }
+        })
+        .catch((err) => {
+          console.warn('Image summary fetch error:', err);
+          setSummaryError(true);
+        })
+        .finally(() => {
+          setIsSummaryLoading(false);
+        });
     } catch (err) {
-      setErrorMessage(err.message || 'Image analysis failed. Please try again.');
+      setErrorMessage(err.message || 'Image analysis failed. Please verify the backend connection and try again.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -112,7 +131,7 @@ export default function App() {
     }
 
     const cleanQuestion = question.trim();
-    if (!cleanQuestion) return;
+    if (!cleanQuestion || isChatLoading) return;
 
     // Optimistically add user question to chat UI
     setChatMessages((prev) => [...prev, { role: 'user', content: cleanQuestion }]);
@@ -170,10 +189,14 @@ export default function App() {
     setConversationId(null);
     setChatMessages([]);
     setErrorMessage(null);
+    setImageSummary(null);
+    setIsSummaryLoading(false);
+    setSummaryError(false);
+    setSummarySource(null);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500/30 selection:text-white">
       {/* Top Header */}
       <Header backendStatus={backendStatus} />
 
@@ -181,7 +204,7 @@ export default function App() {
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
         {/* Error notification banner */}
         {errorMessage && (
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-start justify-between gap-3 shadow-lg">
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-start justify-between gap-3 shadow-lg animate-fade-in">
             <div className="flex items-start gap-2.5">
               <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
               <div>
@@ -192,35 +215,16 @@ export default function App() {
             <button
               type="button"
               onClick={() => setErrorMessage(null)}
-              className="text-xs px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/40 text-rose-200 transition"
+              className="text-xs px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-200 transition cursor-pointer"
             >
               Dismiss
             </button>
           </div>
         )}
 
-        {/* State 1: No Image Selected -> Dropzone & Welcome */}
+        {/* State 1: No Image Selected -> Hero & Dropzone */}
         {!selectedFile ? (
-          <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full py-8 gap-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-sm text-slate-300 shadow-md w-full space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0 shadow-sm">
-                  <Bot className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    Phase 3: Conversational Image Understanding
-                  </h2>
-                  <p className="text-xs text-indigo-300 font-medium">
-                    YOLOv8s Structured Detection + Vision-Language Model (VLM)
-                  </p>
-                </div>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Upload any photo or select one of the built-in sample scenes. The system uses YOLOv8s for structured COCO object detection and a Vision-Language Model for open-vocabulary visual reasoning and conversational Q&A.
-              </p>
-            </div>
-
+          <div className="flex-1 flex flex-col items-center justify-center w-full py-6 sm:py-10">
             <ImageUpload
               onImageSelect={handleImageSelect}
               onError={(msg) => setErrorMessage(msg)}
@@ -228,10 +232,10 @@ export default function App() {
             />
           </div>
         ) : (
-          /* State 2: Image Selected -> Interactive Split Layout */
+          /* State 2: Image Selected -> Interactive Split Workspace */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left Column: Image Preview & Detected Objects (5 cols on lg) */}
-            <div className="lg:col-span-6 space-y-5">
+            {/* Left Column: Image Preview + Technical Detection Details (5-6 cols) */}
+            <div className="lg:col-span-6 space-y-4">
               <ImagePreview
                 imageUrl={imagePreviewUrl}
                 fileInfo={{
@@ -246,6 +250,7 @@ export default function App() {
                 detections={analysisResults?.detections}
               />
 
+              {/* Technical Detection Details: Secondary & Collapsible for Judges */}
               {analysisResults && (
                 <div className="animate-fade-in">
                   <DetectionResults results={analysisResults} />
@@ -253,8 +258,18 @@ export default function App() {
               )}
             </div>
 
-            {/* Right Column: Conversational Chat Section (6 cols on lg) */}
-            <div className="lg:col-span-6">
+            {/* Right Column: AI Visual Understanding Card + Conversation Area (6-7 cols) */}
+            <div className="lg:col-span-6 space-y-4">
+              {/* Primary AI Visual Understanding Card */}
+              <VisualUnderstandingCard
+                summary={imageSummary}
+                isLoading={isSummaryLoading}
+                hasError={summaryError}
+                source={summarySource}
+                isAnalyzed={!!analysisResults}
+              />
+
+              {/* Chat Conversation Area */}
               {analysisResults ? (
                 <ChatSection
                   messages={chatMessages}
@@ -264,18 +279,37 @@ export default function App() {
                   detectedLabels={analysisResults.unique_labels}
                 />
               ) : (
-                <div className="bg-slate-900/60 rounded-2xl border border-slate-800 p-8 text-center flex flex-col items-center justify-center min-h-[360px] gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                    <Bot className="w-6 h-6" />
+                <div className="bg-slate-900/80 rounded-2xl border border-slate-800 p-8 text-center flex flex-col items-center justify-center min-h-[400px] gap-4 shadow-xl">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600/20 to-violet-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-inner">
+                    <Sparkles className="w-7 h-7" />
                   </div>
-                  <div>
+                  <div className="space-y-1.5 max-w-sm">
                     <h3 className="text-base font-semibold text-white">
-                      Image Ready for Analysis
+                      Ready for Analysis
                     </h3>
-                    <p className="text-xs text-slate-400 max-w-sm mt-1">
-                      Click the purple <strong>"Analyze Image"</strong> button on the preview to run the computer vision model and begin your Q&A conversation.
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Click <strong>"Analyze Image"</strong> to initiate your conversational visual intelligence session with Gemini Vision.
                     </p>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAnalyze}
+                    disabled={isAnalyzing}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium text-xs sm:text-sm transition shadow-lg shadow-indigo-600/30 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Analyzing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 fill-white" />
+                        <span>Analyze Image</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               )}
             </div>

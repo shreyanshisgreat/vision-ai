@@ -65,3 +65,17 @@ class ErrorResponse(BaseModel):
     success: bool = False
     error: str = Field(..., description="Error message describing the issue")
     detail: Optional[str] = Field(default=None, description="Additional context or technical detail")
+
+
+class SummaryRequest(BaseModel):
+    """Request schema for automatic image visual summary."""
+    conversation_id: Optional[str] = Field(default=None, description="Active session ID referencing the analyzed image")
+
+
+class SummaryResponse(BaseModel):
+    """Response schema for automatic image visual summary."""
+    success: bool = True
+    summary: str = Field(..., description="Concise natural-language visual summary of the image")
+    source: str = Field(..., description="Source engine: 'gemini_multimodal_api' or 'local_vision_fallback'")
+    conversation_id: Optional[str] = Field(default=None, description="Session ID referencing the image")
+

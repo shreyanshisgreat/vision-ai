@@ -1,6 +1,7 @@
 import base64
 import os
 import re
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -47,7 +48,7 @@ class ChatbotService:
                 if answer:
                     return answer, "gemini_multimodal_api"
             except Exception as exc:
-                print(f"[ChatbotService] Gemini API call failed: {exc}. Falling back to grounded vision engine.")
+                print(f"[ChatbotService] Gemini API call failed: {type(exc).__name__}. Falling back to grounded vision engine.")
 
         # 2. Try OpenAI Multimodal VLM API if key is available
         if self.openai_api_key:
@@ -62,13 +63,47 @@ class ChatbotService:
         answer, source = self._grounded_local_qa(session, clean_question)
         return answer, source
 
+    def generate_image_summary(self, session: ConversationSession) -> Tuple[str, str]:
+        """
+        Generates a concise natural-language summary (2-4 sentences) describing what
+        is visible in the uploaded image.
+        Does NOT alter session dialogue history or add conversation messages.
+        Returns:
+            Tuple[summary_text, source_engine]
+        """
+        # Dynamically refresh keys from environment if empty
+        if not self.gemini_api_key:
+            load_env_file()
+            self.gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
+
+        # 1. Try Gemini Multimodal Vision API
+        if self.gemini_api_key:
+            try:
+                summary = self._call_gemini_summary(session)
+                if summary:
+                    return summary, "gemini_multimodal_api"
+            except Exception as exc:
+                print(f"[ChatbotService] Gemini summary generation failed: {type(exc).__name__}. Falling back.")
+
+        # 2. Local Fallback Summary
+        try:
+            summary, _ = self._grounded_local_qa(session, "describe the image")
+            return summary, "local_vision_fallback"
+        except Exception:
+            return "This image contains visual content available for exploration in the conversation panel.", "local_vision_fallback"
+
+
     # =========================================================================
     # External Multimodal VLM Handlers
     # =========================================================================
 
     def _call_gemini_vision(self, session: ConversationSession, question: str) -> Optional[str]:
         """Calls Google Gemini multimodal API with image bytes, YOLO detections, and dialogue context."""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.gemini_api_key}"
+        gemini_models = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"]
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": self.gemini_api_key,
+        }
 
         detection_lines = []
         for d in session.detections:
@@ -84,26 +119,34 @@ class ChatbotService:
         )
 
         system_instruction = (
-            "You are an AI assistant specialized in multimodal conversational image understanding.\n"
-            "You are provided with: (1) The uploaded image, (2) Previous dialogue turns, and (3) Structured YOLOv8s detections.\n\n"
+            "You are an expert multimodal AI assistant specialized in conversational image understanding and visual question answering.\n\n"
+            "You are provided with:\n"
+            "1. The actual uploaded image.\n"
+            "2. Supporting structured detections from an object detector (YOLOv8s, trained on 80 common COCO categories).\n"
+            "3. Multi-turn dialogue history regarding this specific uploaded image.\n\n"
             f"{detection_summary}\n\n"
-            "Essential Answering Rules:\n"
-            "1. YOLO Detections vs. Open-Vocabulary Objects: YOLOv8s is strictly a closed-set detector limited to 80 MS COCO classes. "
-            "For questions asking what objects were detected by YOLO or inquiring about recognized COCO classes (e.g. laptop, person, chair, bottle), "
-            "cite the verified YOLO detections and their detection confidence scores.\n"
-            "2. Non-COCO Objects: For objects outside the 80 COCO classes (such as calculator, pencil sharpener, pencil, notebook, stapler, document, etc.), "
-            "use your direct visual perception of the image. If visible, confirm that you see them in the image, but explicitly clarify that they are outside "
-            "YOLO's fixed 80 COCO classes and were recognized by visual understanding. NEVER claim that YOLO detected an object outside its 80 classes.\n"
-            "3. Activities & Spatial Context: For questions about what people are doing, spatial relationships ('what is next to the laptop?', 'what is beside him?'), "
-            "combine visual understanding with detected object locations.\n"
-            "4. Uncertainty & Honesty: If an object is not visible, partially occluded, or unclear, say: 'I cannot determine that from the visible information in this image.' "
-            "or 'I can't identify that object with confidence.' Do not hallucinate or invent objects.\n"
-            "5. Confidence Scores: Treat YOLO confidence as a model detection score, not a guaranteed probability. "
-            "Use phrases like 'detected with X% detection confidence'."
+            "Core Principles for Visual Recognition and Conversation:\n"
+            "- Direct Image Inspection: Carefully inspect the actual image for every user question. Your primary source of truth is the visual content of the image.\n"
+            "- Arbitrary Object Identification: You can identify any arbitrary objects, items, tools, accessories, text, background features, or materials visible in the image, regardless of whether they belong to the detector's 80 classes.\n"
+            "- Detector as Supporting Evidence, Not Ground Truth: Use the structured detector results as helpful supporting evidence, never as an exhaustive or final inventory of what is in the image.\n"
+            "  * Never assume an object is absent merely because the detector did not detect it.\n"
+            "  * Never assume an object is present merely because the detector flagged a similar or nearby category.\n"
+            "  * Never claim that you or the system can only recognize 80 classes.\n"
+            "- Targeted Object Verification: When asked whether a specific object is present, actively scan the image for that item. If it is present, describe where it is and its key visual features. If it is clearly not in the image, directly state that it is not present or not visible.\n"
+            "- Visually Similar Object Discrimination: When distinguishing between visually similar objects, evaluate all available visual evidence, including geometric shape, aspect ratio, proportions, physical buttons, controls, layout, displays/screens, markings, text, materials, colors, and surrounding scene context.\n"
+            "- Visible Objects Overview: For 'What objects are visible?' or broad overview questions, report the relevant objects clearly seen in the image, synthesizing both verified detector detections and your direct visual recognition of other visible items.\n"
+            "- Activities & Actions: For questions regarding activities, postures, actions, or interactions, reason directly from the visual evidence depicted in the image.\n"
+            "- Uncertainty & Honesty: If an object is partially occluded, blurry, ambiguous, or if the image does not provide sufficient visual evidence to answer with confidence, explicitly state your uncertainty rather than guessing or hallucinating.\n"
+            "- Conversational Continuity: Maintain dialogue context so that follow-up questions seamlessly refer to the same uploaded image and prior conversation turns."
         )
 
+        history_messages = session.messages[-6:]
+        # Defensively ensure current question is not duplicated if already at tail of history
+        if history_messages and history_messages[-1]["role"] == "user" and history_messages[-1]["content"].strip() == question.strip():
+            history_messages = history_messages[:-1]
+
         contents = []
-        for msg in session.messages[-6:]:
+        for msg in history_messages:
             role = "user" if msg["role"] == "user" else "model"
             contents.append({
                 "role": role,
@@ -128,28 +171,139 @@ class ChatbotService:
                         "data": b64_image,
                     }
                 },
-                {"text": f"[System Context: {system_instruction}]\nUser Question: {question}"},
+                {"text": question},
             ],
         })
 
         payload = {
+            "system_instruction": {
+                "parts": [{"text": system_instruction}],
+            },
             "contents": contents,
             "generationConfig": {
                 "temperature": 0.2,
-                "maxOutputTokens": 350,
+                "maxOutputTokens": 700,
             },
         }
 
-        response = requests.post(url, json=payload, timeout=12)
-        if response.status_code == 200:
-            data = response.json()
-            candidates = data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                if parts:
-                    return parts[0].get("text", "").strip()
-        else:
-            print(f"[Gemini API Error] Status {response.status_code}: {response.text}")
+        for model in gemini_models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            for attempt in range(2):
+                try:
+                    response = requests.post(url, headers=headers, json=payload, timeout=25)
+                    if response.status_code == 200:
+                        data = response.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts:
+                                return parts[0].get("text", "").strip()
+                        return None
+                    elif response.status_code == 429:
+                        # Model quota exceeded; break to next Gemini model
+                        break
+                    elif response.status_code == 503 and attempt < 1:
+                        time.sleep(2)
+                        continue
+                    else:
+                        break
+                except requests.exceptions.Timeout:
+                    if attempt < 1:
+                        time.sleep(2)
+                        continue
+                    break
+                except requests.exceptions.RequestException as e:
+                    print(f"[Gemini API Exception] {type(e).__name__}")
+                    break
+        return None
+
+    def _call_gemini_summary(self, session: ConversationSession) -> Optional[str]:
+        """Calls Google Gemini multimodal API to generate a concise 2-4 sentence image summary."""
+        gemini_models = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"]
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": self.gemini_api_key,
+        }
+
+        system_instruction = (
+            "You are an expert multimodal visual intelligence assistant.\n"
+            "Your task is to inspect the uploaded image and generate a concise natural-language summary (approximately 2–4 sentences) describing what you see.\n\n"
+            "Guidelines:\n"
+            "- Describe the main scene clearly and accurately.\n"
+            "- Identify clearly visible important objects, tools, devices, or equipment.\n"
+            "- Mention relevant people and what they are doing if people are present.\n"
+            "- Mention notable spatial relationships and layout context when helpful.\n"
+            "- Mention visible text only when confidently readable.\n"
+            "- Be concise: strictly 2 to 4 sentences.\n"
+            "- Avoid unnecessary speculation; state uncertainty when something cannot be determined reliably.\n"
+            "- Do NOT restrict your recognition to any fixed class list (you can identify arbitrary objects).\n"
+            "- Do NOT reference detection models, class numbers, confidence percentages, or technical jargon."
+        )
+
+        b64_image = base64.b64encode(session.image_bytes).decode("utf-8")
+
+        mime_type = "image/jpeg"
+        if session.image_bytes.startswith(b"\x89PNG") or (session.image_filename and session.image_filename.lower().endswith(".png")):
+            mime_type = "image/png"
+        elif session.image_bytes.startswith(b"RIFF"):
+            mime_type = "image/webp"
+
+        contents = [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": b64_image,
+                        }
+                    },
+                    {
+                        "text": "Describe what you see in this image in 2 to 4 concise, natural-language sentences. Mention the primary subject, key visible objects, spatial arrangement, and setting."
+                    },
+                ],
+            }
+        ]
+
+        payload = {
+            "system_instruction": {
+                "parts": [{"text": system_instruction}],
+            },
+            "contents": contents,
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 800,
+            },
+        }
+
+        for model in gemini_models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            for attempt in range(2):
+                try:
+                    response = requests.post(url, headers=headers, json=payload, timeout=25)
+                    if response.status_code == 200:
+                        data = response.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts:
+                                return parts[0].get("text", "").strip()
+                        return None
+                    elif response.status_code == 429:
+                        break
+                    elif response.status_code == 503 and attempt < 1:
+                        time.sleep(2)
+                        continue
+                    else:
+                        break
+                except requests.exceptions.Timeout:
+                    if attempt < 1:
+                        time.sleep(2)
+                        continue
+                    break
+                except requests.exceptions.RequestException as e:
+                    print(f"[Gemini API Exception] {type(e).__name__}")
+                    break
         return None
 
     def _call_openai_vision(self, session: ConversationSession, question: str) -> Optional[str]:
@@ -177,17 +331,27 @@ class ChatbotService:
         )
 
         system_prompt = (
-            "You are an AI assistant specialized in multimodal conversational image understanding.\n"
+            "You are an expert multimodal AI assistant specialized in conversational image understanding.\n\n"
+            "You are provided with:\n"
+            "1. The actual uploaded image.\n"
+            "2. Supporting structured detections from an object detector (YOLOv8s, trained on 80 common COCO categories).\n"
+            "3. Multi-turn dialogue history regarding this specific uploaded image.\n\n"
             f"{detection_summary}\n\n"
-            "Rules:\n"
-            "1. YOLOv8s is strictly a closed-set detector limited to 80 MS COCO classes.\n"
-            "2. For objects outside COCO-80 (like calculator, pencil sharpener, pencil, notebook), inspect visual contents directly. "
-            "Confirm if visible, but clarify they are outside YOLO's 80 classes. Never claim YOLO detected non-COCO items.\n"
-            "3. If an object is unclear or absent, state uncertainty honestly. Do not hallucinate."
+            "Core Principles for Visual Recognition and Conversation:\n"
+            "- Direct Image Inspection: Carefully inspect the actual image for every user question.\n"
+            "- Arbitrary Object Identification: Identify arbitrary objects, including items outside the detector's categories.\n"
+            "- Detector as Supporting Evidence: Use detector results as supporting evidence, not as an exhaustive list. Never assume an object is absent merely because the detector missed it, nor present because of a false positive.\n"
+            "- Visually Similar Discrimination: Use shape, proportions, buttons, controls, screens, text, and context to discriminate similar objects.\n"
+            "- Honesty: State absence or uncertainty clearly when visual evidence is insufficient."
         )
 
+        history_messages = session.messages[-6:]
+        # Defensively ensure current question is not duplicated if already at tail of history
+        if history_messages and history_messages[-1]["role"] == "user" and history_messages[-1]["content"].strip() == question.strip():
+            history_messages = history_messages[:-1]
+
         messages = [{"role": "system", "content": system_prompt}]
-        for msg in session.messages[-6:]:
+        for msg in history_messages:
             messages.append({"role": msg["role"], "content": msg["content"]})
 
         messages.append({

@@ -30,29 +30,28 @@ export default function ChatSection({
     onSendMessage(question);
   };
 
-  // Dynamic suggestion chips demonstrating YOLO structured queries and VLM open-vocabulary questions
+  // UI starter suggestions as requested
   const suggestions = [
-    'What objects are visible?',
-    'Is there a laptop?',
-    'Is there a calculator?',
-    'What is the person doing?',
-    'What is next to the laptop?',
-    'Is this suitable for studying?',
+    "What's in this image?",
+    "Where is the object?",
+    "What is the person doing?",
+    "What text can you see?",
   ];
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden min-h-[460px] max-h-[620px]">
+    <div className="flex flex-col h-full bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl overflow-hidden min-h-[500px] max-h-[640px]">
       {/* Chat Header */}
-      <div className="px-4 py-3 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+      <div className="px-4 py-3 bg-slate-850/90 border-b border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
             <MessageSquare className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-white tracking-tight flex items-center gap-1.5">
-              Image Conversation
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-900/50 text-indigo-300 border border-indigo-700/60 font-medium">
-                VLM Active
+            <h2 className="text-sm font-semibold text-white tracking-tight flex items-center gap-2">
+              Conversation
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-medium flex items-center gap-1">
+                <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
+                Gemini Vision
               </span>
             </h2>
             <p className="text-[11px] text-slate-400">
@@ -66,11 +65,11 @@ export default function ChatSection({
             type="button"
             onClick={onClearChat}
             disabled={isLoading}
-            className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-300 border border-slate-700 transition flex items-center gap-1.5 disabled:opacity-50"
+            className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-rose-300 border border-slate-700/80 transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
             title="Clear conversation history while keeping image"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>Clear Chat</span>
+            <span className="hidden sm:inline">Clear Chat</span>
           </button>
         )}
       </div>
@@ -78,13 +77,13 @@ export default function ChatSection({
       {/* Messages Stream */}
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-4">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-3">
-              <Sparkles className="w-6 h-6" />
+          <div className="h-full flex flex-col items-center justify-center text-center p-6 my-auto">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600/20 to-violet-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-3 shadow-inner">
+              <Sparkles className="w-7 h-7" />
             </div>
-            <p className="text-sm font-semibold text-white">Ask anything about this image</p>
-            <p className="text-xs text-slate-400 max-w-sm mt-1 mb-4">
-              YOLOv8s provides structured object detection while the Vision-Language Model interprets activities, spatial relationships, and open-vocabulary objects.
+            <h3 className="text-base font-semibold text-white">Ask anything about this image</h3>
+            <p className="text-xs text-slate-400 max-w-sm mt-1.5 mb-5 leading-relaxed">
+              Gemini provides conversational visual understanding for open-ended questions, while YOLOv8s provides supporting technical object localization.
             </p>
 
             {/* Quick Starter Suggestions */}
@@ -94,9 +93,11 @@ export default function ChatSection({
                   key={idx}
                   type="button"
                   onClick={() => handleQuickQuestion(suggestion)}
-                  className="text-xs px-3 py-1.5 rounded-full bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-indigo-200 border border-slate-700 hover:border-indigo-500/50 transition cursor-pointer"
+                  disabled={isLoading}
+                  className="text-xs px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-indigo-600/20 text-slate-300 hover:text-indigo-200 border border-slate-700/80 hover:border-indigo-500/50 transition cursor-pointer flex items-center gap-1.5"
                 >
-                  "{suggestion}"
+                  <Sparkles className="w-3 h-3 text-indigo-400" />
+                  <span>"{suggestion}"</span>
                 </button>
               ))}
             </div>
@@ -107,38 +108,55 @@ export default function ChatSection({
             return (
               <div
                 key={index}
-                className={`flex items-start gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}
+                className={`flex items-start gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
                 {!isUser && (
-                  <div className="w-7 h-7 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm shadow-indigo-500/20">
                     <Bot className="w-4 h-4" />
                   </div>
                 )}
 
                 <div
-                  className={`max-w-[85%] rounded-2xl p-3 text-xs sm:text-sm leading-relaxed ${
+                  className={`max-w-[85%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed ${
                     isUser
-                      ? 'bg-indigo-600 text-white rounded-tr-xs shadow-md shadow-indigo-600/20'
-                      : 'bg-slate-800/80 border border-slate-700/60 text-slate-200 rounded-tl-xs shadow-sm flex flex-col gap-1.5'
+                      ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-tr-xs shadow-md shadow-indigo-600/20'
+                      : 'bg-slate-800/80 border border-slate-700/70 text-slate-100 rounded-tl-xs shadow-sm flex flex-col gap-2'
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
 
-                  {/* Engine Source Badge (Part 2 & Part 12 Explainability) */}
+                  {/* Engine Source Badge */}
                   {!isUser && msg.source && (
-                    <div className="flex items-center gap-1.5 pt-1.5 mt-0.5 border-t border-slate-700/50 text-[10px] text-slate-400">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                      <span className="font-mono">
-                        {msg.source === 'gemini_multimodal_api'
-                          ? 'Google Gemini 1.5 Flash (VLM)'
-                          : msg.source === 'openai_multimodal_api'
-                          ? 'OpenAI GPT-4o-mini (VLM)'
-                          : msg.source === 'yolo_structured'
-                          ? 'YOLOv8s Structured Detection'
-                          : msg.source === 'vlm_vision_engine'
-                          ? 'VLM Visual Understanding'
-                          : 'YOLOv8s + VLM Hybrid Engine'}
-                      </span>
+                    <div className="flex items-center gap-1.5 pt-1.5 mt-0.5 border-t border-slate-700/50">
+                      {msg.source === 'gemini_multimodal_api' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-[10px] font-medium text-indigo-300">
+                          <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
+                          Gemini Vision
+                        </span>
+                      ) : msg.source === 'openai_multimodal_api' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-medium text-emerald-300">
+                          OpenAI Vision
+                        </span>
+                      ) : msg.source === 'yolo_vlm_hybrid' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700/50 border border-slate-600/40 text-[10px] font-medium text-slate-300">
+                          <Layers className="w-2.5 h-2.5 text-slate-400" />
+                          Local Hybrid Engine
+                        </span>
+                      ) : msg.source === 'vlm_vision_engine' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700/50 border border-slate-600/40 text-[10px] font-medium text-slate-300">
+                          <Cpu className="w-2.5 h-2.5 text-slate-400" />
+                          Local Vision Fallback
+                        </span>
+                      ) : msg.source === 'yolo_structured' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700/50 border border-slate-600/40 text-[10px] font-medium text-slate-300">
+                          <Layers className="w-2.5 h-2.5 text-slate-400" />
+                          YOLOv8s Structured
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700/50 border border-slate-600/40 text-[10px] font-medium text-slate-300">
+                          {msg.source}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -153,15 +171,19 @@ export default function ChatSection({
           })
         )}
 
-        {/* Loading Indicator */}
+        {/* Loading / Thinking Indicator */}
         {isLoading && (
-          <div className="flex items-start gap-2.5 justify-start">
-            <div className="w-7 h-7 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 mt-0.5">
+          <div className="flex items-start gap-3 justify-start animate-fade-in">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm shadow-indigo-500/20">
               <Bot className="w-4 h-4" />
             </div>
-            <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl rounded-tl-xs px-3.5 py-2.5 text-xs text-slate-300 flex items-center gap-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-              <span>Analyzing image & formulating answer...</span>
+            <div className="bg-slate-800/80 border border-slate-700/70 rounded-2xl rounded-tl-xs px-4 py-3 text-xs text-slate-300 flex items-center gap-2.5 shadow-sm">
+              <span className="text-slate-300">Gemini is analyzing your image</span>
+              <div className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 typing-dot-1" />
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 typing-dot-2" />
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 typing-dot-3" />
+              </div>
             </div>
           </div>
         )}
@@ -169,16 +191,16 @@ export default function ChatSection({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested chips below message stream if messages exist */}
+      {/* Suggested chips above input if conversation has started */}
       {messages.length > 0 && !isLoading && (
-        <div className="px-4 py-2 border-t border-slate-800/60 bg-slate-900/60 flex items-center gap-1.5 overflow-x-auto text-[11px] text-slate-400">
-          <span className="shrink-0 text-slate-500">Suggested:</span>
-          {suggestions.slice(0, 4).map((suggestion, idx) => (
+        <div className="px-4 py-2 border-t border-slate-800/80 bg-slate-900/60 flex items-center gap-1.5 overflow-x-auto text-[11px] text-slate-400">
+          <span className="shrink-0 text-slate-500 text-[10px] uppercase font-semibold">Suggested:</span>
+          {suggestions.map((suggestion, idx) => (
             <button
               key={idx}
               type="button"
               onClick={() => handleQuickQuestion(suggestion)}
-              className="shrink-0 px-2.5 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/70 transition"
+              className="shrink-0 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-750 transition cursor-pointer"
             >
               {suggestion}
             </button>
@@ -189,28 +211,31 @@ export default function ChatSection({
       {/* Chat Input Bar */}
       <form
         onSubmit={handleSubmit}
-        className="p-3 bg-slate-850 border-t border-slate-800 flex items-center gap-2"
+        className="p-3 sm:p-3.5 bg-slate-850/90 border-t border-slate-800 flex items-center gap-2"
       >
         <input
           ref={inputRef}
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Ask a question about this image..."
+          placeholder="Ask anything about this image..."
           disabled={isLoading}
-          className="flex-1 bg-slate-900 border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 outline-none transition disabled:opacity-50"
+          className="flex-1 bg-slate-900 border border-slate-700/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 outline-none transition disabled:opacity-50"
         />
 
         <button
           type="submit"
           disabled={!inputValue.trim() || isLoading}
-          className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-indigo-600/30 flex items-center justify-center shrink-0"
+          className="p-2.5 sm:px-4 sm:py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium text-xs sm:text-sm transition disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-indigo-600/25 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
           title="Send Question"
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <Send className="w-4 h-4" />
+            <>
+              <Send className="w-4 h-4" />
+              <span className="hidden sm:inline">Ask</span>
+            </>
           )}
         </button>
       </form>

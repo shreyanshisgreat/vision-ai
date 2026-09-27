@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Play, Loader2, Layers, Info } from 'lucide-react';
+import { X, Play, Loader2, Layers, CheckCircle2 } from 'lucide-react';
 
 export default function ImagePreview({
   imageUrl,
@@ -18,27 +18,36 @@ export default function ImagePreview({
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
+  const isAnalyzed = Boolean(detections && detections.length >= 0);
+
   return (
-    <div className="w-full bg-slate-850 rounded-2xl border border-slate-700/80 overflow-hidden shadow-xl bg-slate-900/60">
+    <div className="w-full bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden shadow-xl flex flex-col">
       {/* Top Preview Bar */}
-      <div className="px-4 py-2.5 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between gap-2">
+      <div className="px-4 py-3 bg-slate-850/80 border-b border-slate-800 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 overflow-hidden text-xs text-slate-300">
-          <span className="font-semibold text-white truncate max-w-[200px] sm:max-w-xs">
+          <span className="font-semibold text-white truncate max-w-[180px] sm:max-w-xs">
             {fileInfo?.name || 'Uploaded Image'}
           </span>
           {fileInfo?.size && (
-            <span className="text-slate-400">({formatSize(fileInfo.size)})</span>
+            <span className="text-slate-400 font-mono">
+              ({formatSize(fileInfo.size)})
+            </span>
+          )}
+          {fileInfo?.width > 0 && fileInfo?.height > 0 && (
+            <span className="hidden sm:inline text-slate-500 font-mono text-[11px]">
+              · {fileInfo.width}×{fileInfo.height}
+            </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {detections && detections.length > 0 && (
             <button
               type="button"
               onClick={() => setShowBoxes(!showBoxes)}
-              className={`text-xs px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 ${
+              className={`text-xs px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
                 showBoxes
-                  ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/50'
+                  ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40'
                   : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
               }`}
               title="Toggle bounding box highlights"
@@ -52,8 +61,8 @@ export default function ImagePreview({
             type="button"
             onClick={onReset}
             disabled={isLoading}
-            className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 transition flex items-center gap-1 disabled:opacity-50"
-            title="Reset image"
+            className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-slate-700/80 hover:border-rose-500/40 transition flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+            title="Upload another image"
           >
             <X className="w-3.5 h-3.5" />
             <span>Reset</span>
@@ -62,18 +71,18 @@ export default function ImagePreview({
       </div>
 
       {/* Main Image Display with Optional Bounding Box Overlay */}
-      <div className="relative flex items-center justify-center p-3 bg-slate-950/70 min-h-[260px] max-h-[480px] overflow-hidden">
+      <div className="relative flex items-center justify-center p-3 bg-slate-950/70 min-h-[280px] max-h-[460px] overflow-hidden">
         <div className="relative inline-block max-w-full max-h-[440px]">
           <img
             src={imageUrl}
             alt="Preview"
-            className="rounded-lg object-contain max-h-[440px] max-w-full block mx-auto border border-slate-800"
+            className="rounded-xl object-contain max-h-[440px] max-w-full block mx-auto border border-slate-800/80 shadow-md"
           />
 
-          {/* SVG Bounding Boxes Overlay (if detections available and toggled) */}
+          {/* SVG Bounding Boxes Overlay */}
           {showBoxes && detections && detections.length > 0 && fileInfo?.width && fileInfo?.height && (
             <svg
-              className="absolute inset-0 w-full h-full pointer-events-none rounded-lg"
+              className="absolute inset-0 w-full h-full pointer-events-none rounded-xl"
               viewBox={`0 0 ${fileInfo.width} ${fileInfo.height}`}
               preserveAspectRatio="none"
             >
@@ -103,7 +112,6 @@ export default function ImagePreview({
                       strokeWidth="3"
                       rx="4"
                     />
-                    {/* Label background badge */}
                     <rect
                       x={x1}
                       y={Math.max(0, y1 - 22)}
@@ -130,11 +138,15 @@ export default function ImagePreview({
 
           {/* Loading scan overlay */}
           {isLoading && (
-            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs rounded-lg flex flex-col items-center justify-center gap-3 p-4">
-              <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-              <div className="text-center">
-                <p className="text-sm font-semibold text-white">Analyzing Image...</p>
-                <p className="text-xs text-indigo-300/80">Running YOLOv8 pretrained vision model</p>
+            <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-xs rounded-xl flex flex-col items-center justify-center gap-3 p-4 z-20">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 flex items-center justify-center text-indigo-400">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-semibold text-white">Gemini is analyzing your image...</p>
+                <p className="text-xs text-indigo-300/80">Running multimodal visual analysis & technical detection</p>
               </div>
             </div>
           )}
@@ -142,30 +154,49 @@ export default function ImagePreview({
       </div>
 
       {/* Action / Analyze Bar */}
-      <div className="px-4 py-3 bg-slate-900 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="text-xs text-slate-400 flex items-center gap-1.5">
-          <Info className="w-4 h-4 text-slate-500 shrink-0" />
-          <span>Click "Analyze Image" to detect objects and generate visual insights.</span>
-        </div>
+      <div className="px-4 py-3 bg-slate-900 border-t border-slate-800 flex items-center justify-between gap-3">
+        {isAnalyzed ? (
+          <div className="flex items-center justify-between w-full">
+            <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              VisionAI Active · Ready to chat
+            </span>
 
-        <button
-          type="button"
-          onClick={onAnalyze}
-          disabled={isLoading}
-          className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium text-sm transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Analyzing...</span>
-            </>
-          ) : (
-            <>
-              <Play className="w-4 h-4 fill-white" />
-              <span>Analyze Image</span>
-            </>
-          )}
-        </button>
+            <button
+              type="button"
+              onClick={onAnalyze}
+              disabled={isLoading}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer disabled:opacity-50"
+            >
+              Re-analyze
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between w-full gap-3">
+            <span className="text-xs text-slate-400">
+              Click "Analyze Image" to start the conversation.
+            </span>
+
+            <button
+              type="button"
+              onClick={onAnalyze}
+              disabled={isLoading}
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium text-xs sm:text-sm transition shadow-lg shadow-indigo-600/30 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Analyzing...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>Analyze Image</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

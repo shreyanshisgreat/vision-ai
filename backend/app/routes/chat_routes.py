@@ -63,13 +63,11 @@ async def chat_with_image(req: ChatRequest):
     try:
         chatbot_service = get_chatbot_service()
         
-        # 1. Append user question to session history
-        session.add_message("user", clean_question)
-
-        # 2. Generate answer
+        # 1. Generate answer using current image context and dialogue history
         answer, source = chatbot_service.answer_question(session, clean_question)
 
-        # 3. Append assistant answer to session history
+        # 2. Append both user question and assistant answer to session history
+        session.add_message("user", clean_question)
         session.add_message("assistant", answer)
 
         return ChatResponse(

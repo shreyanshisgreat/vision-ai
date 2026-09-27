@@ -2,7 +2,7 @@
  * API service for communicating with the FastAPI backend.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://vision-ai-velc.onrender.com/api';
 
 /**
  * Upload and analyze an image file.
@@ -28,7 +28,7 @@ export async function analyzeImage(file) {
     return data;
   } catch (error) {
     if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-      throw new Error('Could not connect to the backend server. Please verify the backend is running at http://127.0.0.1:8000.');
+      throw new Error('Could not connect to the backend server. Please verify the backend is running at https://vision-ai-velc.onrender.com.');
     }
     throw error;
   }
